@@ -6,5 +6,6 @@ class CameraType:
         self.orthographic = redner.CameraType.orthographic
         self.fisheye = redner.CameraType.fisheye
         self.panorama = redner.CameraType.panorama
+        self.fullpatchsample = redner.CameraType.fullpatchsample
 
 camera_type = CameraType()

@@ -7,6 +7,7 @@ class RednerCameraType:
         redner.CameraType.orthographic,
         redner.CameraType.fisheye,
         redner.CameraType.panorama,
+        redner.CameraType.fullpatchsample,
     ]
 
     @staticmethod

@@ -12,7 +12,8 @@ enum class CameraType {
     Perspective,
     Orthographic,
     Fisheye,
-    Panorama
+    Panorama,
+    FullPatchSample
 };
 
 struct Camera {
@@ -159,6 +160,16 @@ Ray sample_primary(const Camera &camera,
                                cos_theta,
                                sin_phi * sin_theta};
             auto world_dir = xfm_vector(camera.cam_to_world, dir);
+            auto n_world_dir = normalize(world_dir);
+            return Ray{org, n_world_dir};
+        }
+        case CameraType::FullPatchSample: {
+            auto org = xfm_point(camera.cam_to_world, Vector3{0, 0, 0});
+
+            auto world_target = Vector3{(screen_pos[0] - Real(0.5)) * Real(2),
+                                        (screen_pos[1] - Real(0.5)) * Real(-2),
+                                        Real(0)};
+            auto world_dir = world_target - org;
             auto n_world_dir = normalize(world_dir);
             return Ray{org, n_world_dir};
         }
@@ -434,6 +445,49 @@ inline void d_sample_primary_ray(const Camera &camera,
                 (*d_screen_pos)[1] += d_theta * Real(M_PI);
             }
         } break;
+        case CameraType::FullPatchSample: {
+            auto org = xfm_point(camera.cam_to_world, Vector3{ 0, 0, 0 });
+
+            auto world_target = Vector3{ (screen_pos[0] - Real(0.5)) * Real(2),
+                                         (screen_pos[1] - Real(0.5)) * Real(-2),
+                                         Real(0) };
+            auto world_dir = world_target - org;
+            
+            auto d_org         = d_ray.org;
+            auto d_n_world_dir = d_ray.dir;
+            //auto n_world_dir = normalize(world_dir);
+            auto d_world_dir = d_normalize(world_dir, d_n_world_dir);
+            //auto world_dir = world_target - org;
+            Vector3 d_world_target{ 0, 0, 0 };
+            d_difference(org, world_target, d_world_dir, d_org, d_world_target);
+
+            // org = xfm_point(camera.cam_to_world, Vector3{0, 0, 0})
+            auto d_cam_to_world = Matrix4x4();
+            auto d_cam_org = Vector3{ 0, 0, 0 };
+            d_xfm_point(camera.cam_to_world, Vector3{ 0, 0, 0 }, d_org,
+                        d_cam_to_world, d_cam_org);
+            if (camera.use_look_at) {
+                auto d_p = Vector3{ 0, 0, 0 };
+                auto d_l = Vector3{ 0, 0, 0 };
+                auto d_up = Vector3{ 0, 0, 0 };
+                d_look_at_matrix(camera.position, camera.look, camera.up,
+                    d_cam_to_world, d_p, d_l, d_up);
+                atomic_add(d_camera.position, d_p);
+                atomic_add(d_camera.look, d_l);
+                atomic_add(d_camera.up, d_up);
+            }
+            else {
+                atomic_add(d_camera.cam_to_world, d_cam_to_world);
+            }
+
+            if (d_screen_pos != nullptr) {
+                // auto world_target = Vector3{ (screen_pos[0] - Real(0.5)) * Real(2),
+                //                              (screen_pos[1] - Real(0.5)) * Real(-2),
+                //                              Real(0) };
+                (*d_screen_pos)[0] += d_world_target[0] * 2;
+                (*d_screen_pos)[1] += d_world_target[1] * (-2);
+            }
+        } break;
         default: {
             assert(false);
         }
@@ -490,6 +544,33 @@ TVector2<T> camera_to_screen(const Camera &camera,
             auto theta = acos(cos_theta);
             auto x = phi / Real(2 * M_PI);
             auto y = theta / Real(M_PI);
+            return TVector2<T>{x, y};
+        }
+        case CameraType::FullPatchSample: {
+            // The patch looks like this:
+            // x0 --- x1 
+            // |       |
+            // |       |
+            // x2 --- x3
+            auto x0 = Vector3{ -1,   1, 0 };
+            auto x1 = Vector3{ 1,   1, 0 };
+            auto x2 = Vector3{ -1,  -1, 0 };
+            auto e0 = difference(x0, x1);
+            auto e1 = difference(x0, x2);
+
+            auto world_pt = xfm_point(camera.cam_to_world, pt);
+
+            auto patch_local_world_pt = difference(x0, world_pt);
+
+            auto e0_pt = dot(e0, patch_local_world_pt);
+            auto e1_pt = dot(e1, patch_local_world_pt);
+
+            auto l2_e0 = e0_pt * e1_pt;
+            auto l2_e1 = e1_pt * e1_pt;
+
+            auto x = e0_pt / l2_e0;
+            auto y = e1_pt / l2_e1;
+
             return TVector2<T>{x, y};
         }
         default: {
@@ -612,6 +693,71 @@ inline void d_camera_to_screen(const Camera &camera,
             // Backprop dir = normalize(pt);
             auto ddir = Vector3{ddir0, ddir1, ddir2};
             d_pt += d_normalize(pt, ddir);
+        } break;
+        case CameraType::FullPatchSample: {
+            // The patch looks like this:
+            // x0 --- x1 
+            // |       |
+            // |       |
+            // x2 --- x3
+            auto x0 = Vector3{ -1,   1, 0 };
+            auto x1 = Vector3{ 1,   1, 0 };
+            auto x2 = Vector3{ -1,  -1, 0 };
+            auto e0 = difference(x0, x1);
+            auto e1 = difference(x0, x2);
+
+            auto world_pt = xfm_point(camera.cam_to_world, pt);
+
+            auto patch_local_world_pt = difference(x0, world_pt);
+
+            auto e0_pt = dot(e0, patch_local_world_pt);
+            auto e1_pt = dot(e1, patch_local_world_pt);
+
+            auto l2_e0 = e0_pt * e1_pt;
+            auto l2_e1 = e1_pt * e1_pt;
+
+            auto x = e0_pt / l2_e0;
+            auto y = e1_pt / l2_e1;
+
+            // auto x = e0_pt / l2_e0;
+            // auto y = e1_pt / l2_e1;
+            // Quotient rule and dl2_e0/d_e0_pt = 2 * d_e0_pt
+            auto d_e0_pt = (l2_e0 - 2 * e0_pt * e0_pt) / (l2_e0 * l2_e0) * dx;
+            auto d_e1_pt = (l2_e1 - 2 * e1_pt * e1_pt) / (l2_e1 * l2_e1) * dy;
+
+            //Vector3 d_plw{ 0, 0, 0 };
+            //Vector3 d_x0{ 0, 0, 0 };
+            //Vector3 d_world_pt{ 0, 0, 0 };
+            //d_difference(x0, world_pt, d_plw, d_x0, d_world_pt);
+            //auto e0_pt = dot(e0, patch_local_world_pt);
+            //auto e1_pt = dot(e1, patch_local_world_pt);
+            auto d_plw_e0 = e0 * d_e0_pt;
+            auto d_plw_e1 = e1 * d_e1_pt;
+
+            // auto patch_local_world_pt = difference(x0, world_pt);
+            Vector3 d_x0{ 0, 0, 0 };
+            Vector3 d_world_pt_e0{ 0, 0, 0 };
+            Vector3 d_world_pt_e1{ 0, 0, 0 };
+            d_difference(x0, world_pt, d_plw_e0, d_x0, d_world_pt_e0);
+            d_difference(x0, world_pt, d_plw_e1, d_x0, d_world_pt_e1);
+
+            // auto world_pt = xfm_point(camera.cam_to_world, pt);
+            auto d_cam_to_world = Matrix4x4();
+            d_xfm_point(camera.cam_to_world, pt, d_world_pt_e0, d_cam_to_world, d_pt);
+            d_xfm_point(camera.cam_to_world, pt, d_world_pt_e1, d_cam_to_world, d_pt);
+            if (camera.use_look_at) {
+                auto d_p = Vector3{ 0, 0, 0 };
+                auto d_l = Vector3{ 0, 0, 0 };
+                auto d_up = Vector3{ 0, 0, 0 };
+                d_look_at_matrix(camera.position, camera.look, camera.up,
+                    d_cam_to_world, d_p, d_l, d_up);
+                atomic_add(d_camera.position, d_p);
+                atomic_add(d_camera.look, d_l);
+                atomic_add(d_camera.up, d_up);
+            }
+            else {
+                atomic_add(d_camera.cam_to_world, d_cam_to_world);
+            }
         } break;
         default: {
             assert(false);
@@ -805,6 +951,10 @@ inline TVector3<T> screen_to_camera(const Camera &camera,
                                    sin_phi * sin_theta};
             return dir;
         }
+        case CameraType::FullPatchSample: {
+            assert(false); // TODO
+            return TVector3<T>{0, 0, 1};
+        }
         default: {
             assert(false);
             return TVector3<T>{0, 0, 0};
@@ -909,6 +1059,9 @@ inline void d_screen_to_camera(const Camera &camera,
                 d_dir_x_d_phi * d_phi_d_y + d_dir_x_d_theta * d_theta_d_y,
                 d_dir_z_d_theta * d_theta_d_y,
                 d_dir_z_d_phi * d_phi_d_y + d_dir_z_d_theta * d_theta_d_y};
+        } break;
+        case CameraType::FullPatchSample: {
+            assert(false); // TODO
         } break;
         default: {
             assert(false);

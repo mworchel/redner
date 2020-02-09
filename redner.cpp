@@ -26,7 +26,8 @@ PYBIND11_MODULE(redner, m) {
         .value("perspective", CameraType::Perspective)
         .value("orthographic", CameraType::Orthographic)
         .value("fisheye", CameraType::Fisheye)
-        .value("panorama", CameraType::Panorama);
+        .value("panorama", CameraType::Panorama)
+        .value("fullpatchsample", CameraType::FullPatchSample);
 
     py::class_<Camera>(m, "Camera")
         .def(py::init<int,

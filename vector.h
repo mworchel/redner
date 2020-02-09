@@ -410,6 +410,24 @@ inline auto distance_squared(const TVector3<T0> &v0,
 
 template <typename T0, typename T1>
 DEVICE
+inline auto difference(const TVector3<T0>& v0,
+                       const TVector3<T1>& v1) -> decltype(v1 - v0) {
+    return v1 - v0;
+}
+
+template <typename T, typename TDOut>
+DEVICE
+inline void d_difference(const TVector3<T>& v0,
+                         const TVector3<T>& v1,
+                         const TDOut& d_output,
+                         TVector3<T>& d_v0,
+                         TVector3<T>& d_v1) {
+    d_v0 -= d_output;
+    d_v1 += d_output;
+}
+
+template <typename T0, typename T1>
+DEVICE
 inline auto distance(const TVector3<T0> &v0,
                      const TVector3<T1> &v1) -> decltype(length(v1 - v0)) {
     return length(v1 - v0);

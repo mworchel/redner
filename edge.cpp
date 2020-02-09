@@ -418,7 +418,8 @@ struct primary_edge_sampler {
         }
 
         if (camera.camera_type == CameraType::Perspective ||
-                camera.camera_type == CameraType::Orthographic) {
+                camera.camera_type == CameraType::Orthographic ||
+                camera.camera_type == CameraType::FullPatchSample) {
             // Perspective or Orthographic cameras
 
             // Uniform sample on the edge
@@ -715,7 +716,8 @@ struct primary_edge_derivatives_computer {
         auto d_edge_pt = Vector2{0, 0};
         auto edge_pt = edge_record.edge_pt;
         if (camera.camera_type == CameraType::Perspective ||
-                camera.camera_type == CameraType::Orthographic) {
+                camera.camera_type == CameraType::Orthographic ||
+                camera.camera_type == CameraType::FullPatchSample) {
             // Equation 8 in the paper
             d_v0_ss.x = v1_ss.y - edge_pt.y;
             d_v0_ss.y = edge_pt.x - v1_ss.x;
