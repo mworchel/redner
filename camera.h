@@ -744,7 +744,7 @@ inline void d_camera_to_screen(const Camera &camera,
             d_dot(e1, patch_local_world_pt, d_e1_pt, d_e1, d_patch_local_world_pt);
 
             // auto patch_local_world_pt = difference(x0, world_pt);
-            Vector3 d_x0;
+            Vector3 d_x0{ 0, 0, 0 };
             Vector3 d_world_pt{ 0, 0, 0 };
             d_difference(x0, world_pt, d_patch_local_world_pt, d_x0, d_world_pt);
 
