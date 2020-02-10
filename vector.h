@@ -415,11 +415,11 @@ inline auto difference(const TVector3<T0>& v0,
     return v1 - v0;
 }
 
-template <typename T, typename TDOut>
+template <typename T>
 DEVICE
 inline void d_difference(const TVector3<T>& v0,
                          const TVector3<T>& v1,
-                         const TDOut& d_output,
+                         const TVector3<T>& d_output,
                          TVector3<T>& d_v0,
                          TVector3<T>& d_v1) {
     d_v0 -= d_output;
@@ -499,6 +499,16 @@ inline auto dot(const TVector3<T0> &v0, const TVector3<T1> &v1)
     return v0[0] * v1[0] +
            v0[1] * v1[1] +
            v0[2] * v1[2];
+}
+
+template <typename T>
+DEVICE
+inline void d_dot(const TVector3<T>& v0, const TVector3<T>& v1,
+                  const T& d_output,
+                  TVector3<T>& d_v0, TVector3<T>& d_v1)
+{
+  d_v0 += d_output * v1;
+  d_v1 += d_output * v0;
 }
 
 template <typename T0, typename T1>

@@ -553,7 +553,7 @@ TVector2<T> camera_to_screen(const Camera &camera,
             // |       |
             // x2 --- x3
             auto x0 = Vector3{ -1,   1, 0 };
-            auto x1 = Vector3{ 1,   1, 0 };
+            auto x1 = Vector3{  1,   1, 0 };
             auto x2 = Vector3{ -1,  -1, 0 };
             auto e0 = difference(x0, x1);
             auto e1 = difference(x0, x2);
@@ -562,12 +562,14 @@ TVector2<T> camera_to_screen(const Camera &camera,
 
             auto patch_local_world_pt = difference(x0, world_pt);
 
+            // Project point to the screen basis vectors
             auto e0_pt = dot(e0, patch_local_world_pt);
             auto e1_pt = dot(e1, patch_local_world_pt);
 
-            auto l2_e0 = e0_pt * e1_pt;
-            auto l2_e1 = e1_pt * e1_pt;
+            auto l2_e0 = length_squared(e0);
+            auto l2_e1 = length_squared(e1);
 
+            // Express coordinates in terms of (unnormalized) basis vectors
             auto x = e0_pt / l2_e0;
             auto y = e1_pt / l2_e1;
 
@@ -701,7 +703,7 @@ inline void d_camera_to_screen(const Camera &camera,
             // |       |
             // x2 --- x3
             auto x0 = Vector3{ -1,   1, 0 };
-            auto x1 = Vector3{ 1,   1, 0 };
+            auto x1 = Vector3{  1,   1, 0 };
             auto x2 = Vector3{ -1,  -1, 0 };
             auto e0 = difference(x0, x1);
             auto e1 = difference(x0, x2);
@@ -710,53 +712,56 @@ inline void d_camera_to_screen(const Camera &camera,
 
             auto patch_local_world_pt = difference(x0, world_pt);
 
+            // Project point to the screen basis vectors
             auto e0_pt = dot(e0, patch_local_world_pt);
             auto e1_pt = dot(e1, patch_local_world_pt);
 
-            auto l2_e0 = e0_pt * e1_pt;
-            auto l2_e1 = e1_pt * e1_pt;
+            auto l2_e0 = length_squared(e0);
+            auto l2_e1 = length_squared(e1);
 
+            // Express coordinates in terms of (unnormalized) basis vectors
             auto x = e0_pt / l2_e0;
             auto y = e1_pt / l2_e1;
 
             // auto x = e0_pt / l2_e0;
             // auto y = e1_pt / l2_e1;
-            // Quotient rule and dl2_e0/d_e0_pt = 2 * d_e0_pt
-            auto d_e0_pt = (l2_e0 - 2 * e0_pt * e0_pt) / (l2_e0 * l2_e0) * dx;
-            auto d_e1_pt = (l2_e1 - 2 * e1_pt * e1_pt) / (l2_e1 * l2_e1) * dy;
+            auto d_e0_pt = dx * Real(1) / l2_e0;
+            auto d_l2_e0 = -dx * e0_pt   / (l2_e0 * l2_e0);
+            auto d_e1_pt = dy * Real(1) / l2_e1;
+            auto d_l2_e1 = -dy * e1_pt   / (l2_e1 * l2_e1);
 
-            //Vector3 d_plw{ 0, 0, 0 };
-            //Vector3 d_x0{ 0, 0, 0 };
-            //Vector3 d_world_pt{ 0, 0, 0 };
-            //d_difference(x0, world_pt, d_plw, d_x0, d_world_pt);
-            //auto e0_pt = dot(e0, patch_local_world_pt);
-            //auto e1_pt = dot(e1, patch_local_world_pt);
-            auto d_plw_e0 = e0 * d_e0_pt;
-            auto d_plw_e1 = e1 * d_e1_pt;
+            // auto l2_e0 = length_squared(e0);
+            // auto l2_e1 = length_squared(e1);
+            Vector3 d_e0{0, 0, 0};
+            Vector3 d_e1{0, 0, 0};
+            d_e0 += d_length_squared(e0, d_l2_e0);
+            d_e1 += d_length_squared(e1, d_l2_e1);
+
+            // auto e0_pt = dot(e0, patch_local_world_pt);
+            // auto e1_pt = dot(e1, patch_local_world_pt);
+            Vector3 d_patch_local_world_pt{ 0, 0, 0 };
+            d_dot(e0, patch_local_world_pt, d_e0_pt, d_e0, d_patch_local_world_pt);
+            d_dot(e1, patch_local_world_pt, d_e1_pt, d_e1, d_patch_local_world_pt);
 
             // auto patch_local_world_pt = difference(x0, world_pt);
-            Vector3 d_x0{ 0, 0, 0 };
-            Vector3 d_world_pt_e0{ 0, 0, 0 };
-            Vector3 d_world_pt_e1{ 0, 0, 0 };
-            d_difference(x0, world_pt, d_plw_e0, d_x0, d_world_pt_e0);
-            d_difference(x0, world_pt, d_plw_e1, d_x0, d_world_pt_e1);
+            Vector3 d_x0;
+            Vector3 d_world_pt{ 0, 0, 0 };
+            d_difference(x0, world_pt, d_patch_local_world_pt, d_x0, d_world_pt);
 
-            // auto world_pt = xfm_point(camera.cam_to_world, pt);
             auto d_cam_to_world = Matrix4x4();
-            d_xfm_point(camera.cam_to_world, pt, d_world_pt_e0, d_cam_to_world, d_pt);
-            d_xfm_point(camera.cam_to_world, pt, d_world_pt_e1, d_cam_to_world, d_pt);
-            if (camera.use_look_at) {
-                auto d_p = Vector3{ 0, 0, 0 };
-                auto d_l = Vector3{ 0, 0, 0 };
-                auto d_up = Vector3{ 0, 0, 0 };
-                d_look_at_matrix(camera.position, camera.look, camera.up,
-                    d_cam_to_world, d_p, d_l, d_up);
-                atomic_add(d_camera.position, d_p);
-                atomic_add(d_camera.look, d_l);
-                atomic_add(d_camera.up, d_up);
+            d_xfm_point(camera.cam_to_world, pt, d_world_pt, d_cam_to_world, d_pt);
+            if(camera.use_look_at) {
+              auto d_p = Vector3{ 0, 0, 0 };
+              auto d_l = Vector3{ 0, 0, 0 };
+              auto d_up = Vector3{ 0, 0, 0 };
+              d_look_at_matrix(camera.position, camera.look, camera.up,
+                               d_cam_to_world, d_p, d_l, d_up);
+              atomic_add(d_camera.position, d_p);
+              atomic_add(d_camera.look, d_l);
+              atomic_add(d_camera.up, d_up);
             }
             else {
-                atomic_add(d_camera.cam_to_world, d_cam_to_world);
+              atomic_add(d_camera.cam_to_world, d_cam_to_world);
             }
         } break;
         default: {
