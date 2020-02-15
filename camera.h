@@ -720,8 +720,8 @@ inline void d_camera_to_screen(const Camera &camera,
             auto l2_e1 = length_squared(e1);
 
             // Express coordinates in terms of (unnormalized) basis vectors
-            auto x = e0_pt / l2_e0;
-            auto y = e1_pt / l2_e1;
+            //auto x = e0_pt / l2_e0;
+            //auto y = e1_pt / l2_e1;
 
             // auto x = e0_pt / l2_e0;
             // auto y = e1_pt / l2_e1;
