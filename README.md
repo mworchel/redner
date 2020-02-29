@@ -2,8 +2,7 @@
 
 ![](https://people.csail.mit.edu/tzumao/diffrt/teaser.jpg)
 
-redner is a differentiable renderer that can take the derivatives of rendering outputs with respect to arbitrary 
-scene parameters, that is, you can backpropagate from the image to your 3D scene. One of the major usages of redner is inverse rendering (hence the name redner) through gradient descent. What sets redner apart are: 1) it computes correct rendering gradients stochastically without any approximation by properly considering the discontinuities, and 2) it has a physically-based mode -- which means it can simulate photons and produce realistic lighting phenomena, such as shadow and global illumination, and it handles the derivatives of these features correctly. You can also use redner in a [fast deferred rendering mode](https://colab.research.google.com/github/BachiLi/redner/blob/master/tutorials/fast_local_shading.ipynb) for local shading: in this mode it still has correct gradient estimation and more elaborate material models compared to most differentiable renderers out there.
+redner is a differentiable renderer that can take the derivatives of rendering outputs with respect to arbitrary scene parameters, that is, you can backpropagate from the image to your 3D scene. One of the major usages of redner is inverse rendering (hence the name redner) through gradient descent. What sets redner apart are: 1) it computes correct rendering gradients stochastically without any approximation by properly considering the discontinuities, and 2) it has a physically-based mode -- which means it can simulate photons and produce realistic lighting phenomena, such as shadow and global illumination, and it handles the derivatives of these features correctly. You can also use redner in a [fast deferred rendering mode](https://colab.research.google.com/github/BachiLi/redner/blob/master/tutorials/fast_local_shading.ipynb) for local shading: in this mode it still has correct gradient estimation and more elaborate material models compared to most differentiable renderers out there.
 
 For more details on the renderer, what it can do, and the techniques it use for computing the derivatives, please
 take a look at the paper:
@@ -21,6 +20,7 @@ otherwise (Linux and OS X):
 ```
 pip install redner
 ```
+
 You can also build from source. See the [wiki](https://github.com/BachiLi/redner/wiki/Installation) for building instructions.
 Preliminary windows support made by [Markus Worchel](https://github.com/mworchel) can be accessed through building from source.
 
@@ -31,6 +31,7 @@ You can also take a look at the tests directories ([PyTorch](tests) and [TensorF
 
 ## News
 
+02/27/2020 - Fixed a bug in BRDF derivatives. This affects normal mapping the most. Thanks [Markus Worchel](https://github.com/mworchel) again for reporting this.  
 02/02/2020 - Fixed a serious bug for G-buffer rendering (https://github.com/BachiLi/redner/issues/93). Thanks [Markus Worchel](https://github.com/mworchel) for reporting this.  
 02/01/2020 - Preliminary Windows support for GPU is available thanks to [Markus Worchel](https://github.com/mworchel) again.  
 01/08/2020 - Significantly improves the memory usage of mipmapping. Now you can use large textures (say 4096x4096) relatively safely.  
@@ -75,7 +76,6 @@ redner depends on a few libraries/systems, which are all included in the reposit
 - [xatlas](https://github.com/jpcy/xatlas)
 - A few other python packages: numpy, scikit-image
 
-
 ## Roadmap
 
 The current development plan is to enhance the renderer. Following features will be added in the near future (not listed in any particular order):
@@ -93,5 +93,18 @@ The current development plan is to enhance the renderer. Following features will
 - Gradient visualization
 - Spherical light sources
 
-If you have any questions/comments/bug reports, feel free to open a github issue or e-mail to the author
-Tzu-Mao Li (tzumao@mit.edu)
+## Citation
+
+```
+@article{Li:2018:DMC,
+    title = {Differentiable Monte Carlo Ray Tracing through Edge Sampling},
+    author = {Li, Tzu-Mao and Aittala, Miika and Durand, Fr{\'e}do and Lehtinen, Jaakko},
+    journal = {ACM Trans. Graph. (Proc. SIGGRAPH Asia)},
+    volume = {37},
+    number = {6},
+    pages = {222:1--222:11},
+    year = {2018}
+}
+```
+
+If you have any questions/comments/bug reports, feel free to open a github issue or e-mail to the author Tzu-Mao Li (tzumao@mit.edu)
